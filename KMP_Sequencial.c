@@ -16,12 +16,12 @@ int main()
 {
 
 	char * word = "ABCDABD";
-	char * text = "ABC ABCDAB ABCDABCDABDE";
+	char * text = "ABC ABCDAB ABCDABCDABDEABC ABCDAB ABCDABD CDAB ABCDABD";
 	
 	KMP_search(word, text);
-
+/*
 	free(word);
-	free(text);
+	free(text);*/
 
 	return 0;
 }
@@ -42,7 +42,7 @@ void KMP_search(char * word, char * text)
 	partial_match_table(word, len_word, pmt);
 
 
-	while (m + i < (len_text))
+	while ((m + i) < (len_text))
 	{
 		if (word[i] == text[m + i])
 		{
@@ -65,8 +65,7 @@ void KMP_search(char * word, char * text)
 				m++;
 			}
 		}
-		printf("M = %d\n", m);
-		printf("I = %d\n", i);
+		
 	}
 }
 
