@@ -1,7 +1,10 @@
 #include<stdio.h>
 #include<string.h>
 #include<stdlib.h>
+#include "in.h"
+#include "App.h"
 
+int match = 0;
 
 void KMP_search(char * word, char * text);
 
@@ -9,19 +12,28 @@ void partial_match_table(char * word, int length_word, int * pmt);
 
 int * allocate_pmt(int length_word);
 
-//void load_text(char * text);
+string* readTextFromFile(char* path);
+
+off_t fsize(const char *filename);
 
 
-int main()
+int main(int argc, char** argv)
 {
 
-	char * word = "ABCDABD";
-	char * text = "ABC ABCDAB ABCDABCDABDEABC ABCDAB ABCDABD CDAB ABCDABD";
+	char * word = argv[1];
+	char * file = argv[2];
+	string * text = readTextFromFile(file);
 	
-	KMP_search(word, text);
-/*
-	free(word);
-	free(text);*/
+	Stopwatch sw;
+    srand(time(NULL));
+
+	FREQUENCY(sw);
+    START_STOPWATCH(sw);	
+	KMP_search(word, text->content);
+	STOP_STOPWATCH(sw);
+
+	printf("Quantidade de Ocorrencias: %d\n", match);
+	printf("Tempo total: %lf ms\n",sw.mElapsedTime);
 
 	return 0;
 }
@@ -42,13 +54,13 @@ void KMP_search(char * word, char * text)
 	partial_match_table(word, len_word, pmt);
 
 
-	while ((m + i) < (len_text))
+	while (m + i < (len_text))
 	{
 		if (word[i] == text[m + i])
 		{
 			if(i == (len_word-1))
 			{
-				printf("%d\n", m);	
+				match++;	
 			}
 			i++;
 		}	
@@ -65,7 +77,6 @@ void KMP_search(char * word, char * text)
 				m++;
 			}
 		}
-		
 	}
 }
 
@@ -113,4 +124,39 @@ void partial_match_table(char * word, int length_word, int * pmt)
 			pos++;
 		}
 	}
+}
+
+string* readTextFromFile(char* path)
+{
+	FILE* file;
+	string* str;
+	unsigned int i;
+
+	str = (string*) malloc (sizeof(string));
+	str->len = fsize(path);
+	str->content = (char*) malloc (sizeof(char) * (str->len + 1));
+	
+	file = fopen(path, "r");
+
+	if(file == NULL)
+	{
+		fprintf(stderr, "Don't read file: '%s'", path);
+		return NULL;
+	}
+
+	for(i = 0; !feof(file) && (str->content[i] = fgetc(file)) != '\0'; i++);
+
+	fclose(file);
+	
+	return str;
+}
+
+off_t fsize(const char *filename)
+{
+    struct stat st; 
+
+    if (stat(filename, &st) == 0)
+        return st.st_size;
+
+    return -1; 
 }

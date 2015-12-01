@@ -1,0 +1,294 @@
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+#include<pthread.h>
+
+
+char * word = "ABC";
+char * text = "ABC AABCAB ABCDAB";
+
+int num_thread = 0;
+int num_thread_created = 0;
+int num_thread_created_d = 0;
+int rest_text=0;
+
+int len_text;
+int len_word;
+int * pmt;
+
+
+pthread_t *threads;
+pthread_t *threads_d;
+
+pthread_mutex_t lock;
+
+int start = 0;
+int start_d = 0;
+
+int end = 0;
+int end_d = 0;
+
+void KMP_search(void *args);
+void KMP_search_d(void *args);
+
+void partial_match_table(char * word, int length_word, int * pmt);
+
+int * allocate_pmt(int length_word);
+
+//void call_thread();
+
+
+
+int main()
+{
+
+
+	
+	if (pthread_mutex_init(&lock, NULL) != 0)
+    {
+        printf("\n Incialização do mutex falhou!\n");
+        return 1;
+    }
+
+
+	// recovering the length of text
+	len_text = strlen(text);
+	//recovering the length of word
+	len_word = strlen(word);
+	//Allocating pmt
+	pmt = allocate_pmt(len_word);
+	
+	
+	//Creating pmt
+	partial_match_table(word, len_word, pmt);
+
+	
+
+	num_thread = (len_text/len_word);
+	rest_text = (len_text%len_word);
+
+	//Threads
+	pthread_t threads[num_thread];
+	pthread_t threads_d[num_thread-1];
+
+	//call_thread();
+	long rc;
+	int i;
+
+	for (i = 0; i < num_thread; i++)
+	{
+					
+		if((i+1) == num_thread)
+		{
+			end = ((i+1) * len_word) + rest_text;
+			start = (i) * len_word;
+			//printf("Entrou!");
+		}
+		else	
+		{
+			end = ((i+1) * len_word);
+			start = (i) * len_word;
+		}
+
+		rc = pthread_create(&threads[i], NULL, KMP_search, NULL);
+		pthread_join(threads[i], NULL);
+		if (rc)
+		{
+    		printf("ERROR; return code from pthread_create() is %d\n", rc);
+        	exit(-1);
+        }
+			
+		if(i < num_thread -1)
+		{
+			end_d = ((i + 1) * len_word) + (len_word - 1);
+			start_d = ((i + 1) * len_word) - (len_word - 1);
+
+			rc = pthread_create(&threads_d[i], NULL, KMP_search_d, NULL);
+			pthread_join(threads_d[i], NULL);		
+			if (rc)
+			{
+    			printf("ERROR; return code from pthread_create() is %d\n", rc);
+        		exit(-1);
+        	}
+		}
+	}
+/*
+	for(i = 0; i < num_thread; i++)
+	{
+		pthread_join(threads[i], NULL);
+		if(i < num_thread-1)
+			pthread_join(threads[i], NULL);
+	}*/
+
+	return 0;
+}
+
+/*
+void call_thread()
+{
+	pthread_mutex_lock(&lock);
+
+		if(num_thread_created < num_thread)
+		{	
+			long rc;			
+			if((num_thread_created+1) == num_thread)
+			{
+				end = ((num_thread_created+1) * len_word) + rest_text;
+				start = (num_thread_created) * len_word;
+			}
+			else	
+			{
+				end = ((num_thread_created+1) * len_word);
+				start = (num_thread_created) * len_word;
+			}
+
+			rc = pthread_create(&threads[num_thread_created], NULL, KMP_search, (void *)num_thread_created);
+			if (rc){
+       			printf("ERROR; return code from pthread_create() is %d\n", rc);
+         		exit(-1);
+         	}
+			pthread_join(threads[num_thread_created], NULL);
+
+			num_thread_created++;
+			
+			if(num_thread_created_d < num_thread -1)
+			{
+				end_d = ((num_thread_created_d + 1) * len_word) + (len_word - 1);
+				start_d = ((num_thread_created_d + 1) * len_word) - (len_word - 1);
+
+				rc = pthread_create(&threads_d[num_thread_created], NULL, KMP_search_d, (void *)num_thread_created_d);
+				pthread_join(threads_d[num_thread_created_d], NULL);
+
+				num_thread_created_d++;
+			}
+		}
+
+	pthread_mutex_unlock(&lock);
+}*/
+
+void KMP_search(void *args)
+{
+	pthread_mutex_lock(&lock);
+		//Indice of text
+		int m = start;
+		int end_k = end;
+	pthread_mutex_unlock(&lock);
+
+	//Indice of word
+	int i = 0;
+		
+	//call_thread();
+
+	while ((m + i) < (end_k))
+	{
+		if (word[i] == text[m + i])
+		{
+			if(i == (len_word-1))
+			{
+				printf("%d\n", m);	
+			}
+			i++;
+		}	
+		else
+		{
+			if(pmt[i] > -1)
+			{
+				m = (m + i) - pmt[i];
+				i = pmt[i];
+			}
+			else
+			{
+				i = 0;
+				m++;
+			}
+		}
+		
+	}
+}
+
+void KMP_search_d(void *args)
+{
+	pthread_mutex_lock(&lock);
+		//Indice of text
+		int m = start_d;
+		int end_k = end_d;
+	pthread_mutex_unlock(&lock);
+	
+	//Indice of word
+	int i = 0;
+		
+	//call_thread();
+
+	while ((m + i) < (end_k))
+	{
+		if (word[i] == text[m + i])
+		{
+			if(i == (len_word-1))
+			{
+				printf("%d\n", m);	
+			}
+			i++;
+		}	
+		else
+		{
+			if(pmt[i] > -1)
+			{
+				m = (m + i) - pmt[i];
+				i = pmt[i];
+			}
+			else
+			{
+				i = 0;
+				m++;
+			}
+		}
+		
+	}
+}
+
+
+int * allocate_pmt(int length_word)
+{
+
+	register int i;
+	int * pmt_table[length_word];
+
+	for (i = 0; i < length_word; i++)
+	{
+		pmt_table[i] = (int*) malloc(sizeof(int)); 
+	}
+
+	return *pmt_table;
+}
+
+void partial_match_table(char * word, int length_word, int * pmt)
+{
+
+	int pos = 2;
+	int cnd = 0;
+
+	pmt[0] = -1;
+	pmt[1] = 0;
+
+	while(pos < length_word)
+	{
+
+		if(word[pos - 1] == word[cnd])
+		{
+			cnd = cnd + 1;
+			pmt[pos] = cnd;
+			pos++; 
+		}
+
+		else if(cnd > 0)
+		{
+			cnd = pmt[cnd];
+		}
+
+		else
+		{
+			pmt[pos] = 0;
+			pos++;
+		}
+	}
+}
